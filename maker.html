@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>AI工具猎手 - 打字机视频生成</title>
+    <title>AI工具猎手 - 高亮背景版</title>
     <style>
         body {
             background-color: #1a1a1a;
@@ -83,7 +83,7 @@
 <body>
 
 <div class="container">
-    <h1>AI工具猎手 - 打字机特效生成</h1>
+    <h1>AI工具猎手 - 视频生成 (背景增强版)</h1>
     
     <div class="preview-area">
         <canvas id="videoCanvas" width="1920" height="1080"></canvas>
@@ -94,35 +94,34 @@
             <label for="customCode">背景代码素材:</label>
             <textarea id="customCode" placeholder="在此粘贴代码...">
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM
 
-# Loading 6B Model for Consumer GPU
-model_id = "ai-hunter/6b-optimized"
-print("Loading model parameters...")
+# AI Hunter Config
+# ----------------
+# Context Window: 32k
+# Quantization: 4-bit (QLoRA)
+# VRAM Target: < 8GB (RTX 3060/4060)
 
-# Optimization: 4-bit quantization
-config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_compute_dtype=torch.float16
-)
+print("Initializing local inference engine...")
 
-def run_inference(prompt):
-    """
-    Run efficient inference on consumer hardware
-    VRAM Required: ~6GB
-    """
-    inputs = tokenizer(prompt).to("cuda")
-    # Generating response...
-    output = model.generate(**inputs, max_tokens=100)
-    return decode(output)
-
-class EfficiencyBooster:
+class EfficiencyBooster(nn.Module):
     def __init__(self):
-        self.efficiency = "10x"
-        self.target = "Everyone"
+        super().__init__()
+        self.layer1 = "Save Time"
+        self.layer2 = "Increase Output"
         
-    def optimize_workflow(self):
-        return "Saving time for creative work."
+    def forward(self, work_hours):
+        # Reduce work hours by factor of 10
+        return work_hours / 10
+
+def generate_video_assets():
+    model = load_model("6b-optimized")
+    print("System Ready. Waiting for prompt...")
+    while True:
+        # Listening for user input
+        pass
+
+# End of script
             </textarea>
         </div>
     </div>
@@ -139,30 +138,24 @@ class EfficiencyBooster:
     const codeInput = document.getElementById('customCode');
 
     // === 配置参数 ===
-    const DURATION = 8000; // 8秒
+    const DURATION = 8000;
     const FPS = 30;
     const FULL_TEXT = "仅6B参数，消费级显卡可跑";
-    const TYPE_SPEED = 150; // 打字速度 (毫秒/字)
-    const START_DELAY = 500; // 开始前的延迟 (毫秒)
+    const TYPE_SPEED = 150; 
+    const START_DELAY = 500; 
     
     let animationId;
     let codeLines = [];
     let scrollY = 0;
     
-    // 初始化代码内容
     function initCodeLines() {
         const text = codeInput.value || "console.log('Hello AI');";
         codeLines = text.split('\n');
-        // 复制多份以确保循环滚动无缝隙
         while(codeLines.length < 100) {
             codeLines = codeLines.concat(codeLines);
         }
     }
 
-    /**
-     * 绘制每一帧
-     * @param {number} elapsed - 从录制开始经过的毫秒数
-     */
     function drawFrame(elapsed) {
         const width = canvas.width;
         const height = canvas.height;
@@ -171,15 +164,14 @@ class EfficiencyBooster:
         ctx.fillStyle = '#050505';
         ctx.fillRect(0, 0, width, height);
 
-        // 2. 绘制滚动代码 (极客风)
+        // 2. 绘制滚动代码
         ctx.font = '24px "Courier New", monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         
         const lineHeight = 30;
-        scrollY -= 3; // 滚动速度
+        scrollY -= 3;
         
-        // 循环滚动逻辑
         if (Math.abs(scrollY) > (codeLines.length * lineHeight) / 2) {
             scrollY = 0;
         }
@@ -187,37 +179,36 @@ class EfficiencyBooster:
         codeLines.forEach((line, index) => {
             const y = scrollY + (index * lineHeight);
             if (y > -50 && y < height + 50) {
-                // 距离中心越远越透明
                 const distFromCenter = Math.abs(y - height/2);
+                // 【修改点1】这里提高了代码的可见度
+                // 之前的系数是 0.35，现在改为 0.6，让代码更亮
                 const opacity = Math.max(0.1, 1 - (distFromCenter / (height/1.5)));
-                
-                ctx.fillStyle = `rgba(0, 255, 100, ${opacity * 0.35})`; 
+                ctx.fillStyle = `rgba(0, 255, 100, ${opacity * 0.6})`; 
                 ctx.fillText(line, 40, y);
             }
         });
 
-        // 3. 绘制暗角蒙版 (让背景变暗，突出前景)
+        // 3. 绘制暗角蒙版
         const gradient = ctx.createRadialGradient(
             width/2, height/2, 100,
-            width/2, height/2, width/1.2
+            width/2, height/2, width/1.1
         );
-        gradient.addColorStop(0, "rgba(0,0,0,0.7)"); // 中心半透明
-        gradient.addColorStop(1, "rgba(0,0,0,0.95)"); // 边缘接近全黑
+        // 【修改点2】大幅降低了中间遮罩的浓度
+        // 中间透明度从 0.7 降为 0.4 (透出更多背景)
+        gradient.addColorStop(0, "rgba(0,0,0,0.4)"); 
+        // 边缘透明度从 0.95 降为 0.9
+        gradient.addColorStop(1, "rgba(0,0,0,0.9)"); 
+        
         ctx.fillStyle = gradient;
         ctx.fillRect(0,0, width, height);
 
-        // 4. 打字机效果核心逻辑
-        
-        // 设定字体以计算宽度
+        // 4. 打字机文字
         ctx.font = 'bold 90px "Microsoft YaHei", sans-serif';
         const fullTextWidth = ctx.measureText(FULL_TEXT).width;
         
-        // 计算起始X坐标 (确保最终文字整体居中)
-        // 文字虽然是逐个出来的，但起始位置应该是固定的
         const startX = (width - fullTextWidth) / 2;
         const centerY = height / 2;
 
-        // 计算当前应该显示多少个字
         let charCount = 0;
         if (elapsed > START_DELAY) {
             charCount = Math.floor((elapsed - START_DELAY) / TYPE_SPEED);
@@ -226,30 +217,42 @@ class EfficiencyBooster:
         
         const currentText = FULL_TEXT.substring(0, charCount);
 
-        // 绘制文字
-        ctx.textAlign = 'left'; // 打字机必须左对齐
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.shadowColor = "#00ffcc";
-        ctx.shadowBlur = 25; // 辉光效果
+        
+        // 文字阴影增强，防止背景太亮导致文字看不清
+        ctx.shadowColor = "#000000"; // 使用黑色阴影衬托白字
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        
         ctx.fillStyle = '#ffffff';
+        ctx.fillText(currentText, startX, centerY);
+        
+        // 额外的辉光层 (让文字发光，但和黑色阴影分开绘制)
+        ctx.shadowColor = "#00ffcc";
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.fillStyle = "rgba(255,255,255,0.3)"; // 仅绘制发光层
         ctx.fillText(currentText, startX, centerY);
 
         // 5. 绘制光标
-        // 光标位置 = 起始X + 当前文字宽度 + 间距
         const currentTextWidth = ctx.measureText(currentText).width;
         const cursorX = startX + currentTextWidth + 10;
         
-        // 光标闪烁逻辑 (每500ms闪烁一次)
         const showCursor = Math.floor(elapsed / 500) % 2 === 0;
         
         if (showCursor) {
-            ctx.shadowBlur = 10;
-            ctx.fillStyle = '#00ff9d'; // 绿色极客光标
-            ctx.fillRect(cursorX, centerY - 45, 15, 90); // 宽15, 高90
+            ctx.shadowColor = "#00ffcc";
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = '#00ff9d';
+            ctx.fillRect(cursorX, centerY - 45, 15, 90);
         }
 
-        // 恢复阴影设置以免影响下一帧背景
         ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
     }
 
     async function startRecording() {
@@ -259,11 +262,10 @@ class EfficiencyBooster:
         initCodeLines();
         scrollY = 0;
 
-        // 捕捉流
         const stream = canvas.captureStream(FPS);
         const mediaRecorder = new MediaRecorder(stream, {
             mimeType: 'video/webm; codecs=vp9',
-            videoBitsPerSecond: 8000000 // 8Mbps 提高码率保证清晰度
+            videoBitsPerSecond: 8000000
         });
 
         const chunks = [];
@@ -275,7 +277,7 @@ class EfficiencyBooster:
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = `AI工具猎手_打字机特效_${new Date().getTime()}.webm`;
+            a.download = `AI工具猎手_高亮背景_${new Date().getTime()}.webm`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -287,30 +289,23 @@ class EfficiencyBooster:
 
         mediaRecorder.start();
 
-        // 动画循环逻辑
         let startTime = null;
-        
         function loop(timestamp) {
             if (!startTime) startTime = timestamp;
             const elapsed = timestamp - startTime;
-
-            drawFrame(elapsed); // 传入经过的时间，用于计算打字进度
-            
+            drawFrame(elapsed);
             if (elapsed < DURATION) {
                 requestAnimationFrame(loop);
             } else {
                 mediaRecorder.stop();
             }
         }
-        
         requestAnimationFrame(loop);
     }
     
-    // 预览模式：不断循环动画（模拟已经播放完的状态）
     initCodeLines();
     function previewLoop(timestamp) {
         if(!btn.disabled) {
-            // 预览时显示完整文字
             drawFrame(DURATION + 1000); 
             requestAnimationFrame(previewLoop);
         }
