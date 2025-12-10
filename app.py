@@ -88,7 +88,7 @@ def main():
         help="启用可节省显存(速度较慢但避免显存溢出)。在高显存设备上禁用可获得更快的推理速度。"
     )
 
-    tab1, tab2, tab3 = st.tabs(["📝 文生图", "✏️ 图像编辑", "ℹ️ 关于"])
+    tab1, tab2 = st.tabs(["📝 文生图", "✏️ 图像编辑"])
 
     with tab1:
         st.header("文生图生成")
@@ -259,55 +259,6 @@ def main():
                     st.exception(e)
             else:
                 st.info("👈 上传图像并配置参数开始编辑")
-
-    with tab3:
-        st.header("关于 LongCat-Image")
-
-        st.markdown("""
-        ### 🌟 核心特性
-
-        - **卓越的效率与性能**: 仅用 **6B 参数**, LongCat-Image 在多个基准测试中超越了许多体积数倍的开源模型。
-
-        - **出色的编辑性能**: LongCat-Image-Edit 模型在开源模型中实现了最先进的性能,具有卓越的视觉一致性。
-
-        - **强大的中文文字渲染**: 在常见中文字符渲染方面,相比现有 SOTA 开源模型表现出卓越的准确性和稳定性。
-
-        - **出色的照片真实感**: 通过创新的数据策略和训练框架, LongCat-Image 在生成图像中实现了出色的照片真实感。
-
-        - **全面的开源生态系统**: 从中间检查点到完整训练代码的完整工具链。
-
-        ### 📚 资源
-
-        - [GitHub 仓库](https://github.com/meituan-longcat/LongCat-Image)
-        - [arXiv 技术报告](https://arxiv.org/pdf/2512.07584)
-        - [在线演示](https://longcat.ai/)
-        - [Hugging Face - LongCat-Image](https://huggingface.co/meituan-longcat/LongCat-Image)
-        - [Hugging Face - LongCat-Image-Edit](https://huggingface.co/meituan-longcat/LongCat-Image-Edit)
-
-        ### 📝 引用
-
-        ```bibtex
-        @article{LongCat-Image,
-              title={LongCat-Image Technical Report},
-              author={Meituan LongCat Team and  Hanghang Ma and Haoxian Tan and Jiale Huang and Junqiang Wu and Jun-Yan He and Lishuai Gao and Songlin Xiao and Xiaoming Wei and Xiaoqi Ma and Xunliang Cai and Yayong Guan and Jie Hu},
-              journal={arXiv preprint arXiv:2512.07584},
-              year={2025}
-        }
-        ```
-
-        ### 📧 联系方式
-
-        - 邮箱: longcat-team@meituan.com
-        - Twitter: [@Meituan_LongCat](https://x.com/Meituan_LongCat)
-
-        ### ⚖️ 许可证
-
-        LongCat-Image 采用 Apache 2.0 许可证。
-
-        ---
-
-        由美团 LongCat 团队用 ❤️ 构建
-        """)
 
 if __name__ == "__main__":
     main()

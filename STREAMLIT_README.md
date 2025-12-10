@@ -159,7 +159,3 @@ streamlit run app.py
 ## 许可证
 
 此网页界面遵循与 LongCat-Image 相同的 Apache 2.0 许可证。
-
-## 致谢
-
-由美团 LongCat 团队为 LongCat-Image 项目使用 Streamlit 构建。
