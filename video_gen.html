@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AI工具猎手 - 视频生成器</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        h1 { margin-bottom: 10px; font-size: 1.2rem; opacity: 0.8; }
+        
+        /* 容器保持 16:9 */
+        #canvas-container {
+            position: relative;
+            width: 960px; /* 预览宽度 */
+            height: 540px; /* 预览高度 */
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 2px solid #333;
+            background: #000;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* 调试信息层 */
+        #debug-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            pointer-events: none;
+            font-family: monospace;
+            display: none;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 10px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            transition: background 0.3s;
+            font-weight: bold;
+        }
+
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #555; cursor: not-allowed; }
+        button.secondary { background-color: #444; }
+        button.secondary:hover { background-color: #666; }
+
+        #status {
+            margin-top: 10px;
+            color: #aaa;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>AI工具猎手 - 素材生成工具</h1>
+
+    <div id="canvas-container">
+        <!-- 画布实际分辨率为 1920x1080 (1080P) -->
+        <canvas id="mainCanvas" width="1920" height="1080"></canvas>
+        <div id="debug-overlay">X: 0, Y: 0</div>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn" onclick="startGeneration()" disabled>加载中...</button>
+        <button class="secondary" onclick="toggleDebug()">开启/关闭 坐标拾取模式</button>
+    </div>
+    <div id="status">等待开始...</div>
+
+<script>
+    // ==========================================
+    // 1. 用户配置区 (在此处修改图片和坐标)
+    // ==========================================
+    
+    const config = {
+        totalDuration: 10, // 视频总时长（秒）
+        scenes: [
+            {
+                // 案例1：电商图
+                // 替换为你的本地图片路径，例如: './images/eshop.jpg' 或在线链接
+                // 这里使用占位图演示
+                src: './bottom_left.jpg', 
+                name: "焕活精华",
+                // 圈出文字的区域：x, y 是左上角坐标，w 是宽，h 是高 (基于1920x1080分辨率)
+                highlight: { x: 800, y: 400, w: 320, h: 120 } 
+            },
+            {
+                // 案例2：海报
+                src: './bottom_left.jpg',
+                name: "万里长城",
+                highlight: { x: 200, y: 200, w: 400, h: 150 }
+            },
+            {
+                // 案例3：慢生活
+                src: './bottom_left.jpg',
+                name: "慢生活",
+                highlight: { x: 1200, y: 600, w: 300, h: 100 }
+            }
+        ]
+    };
+
+    // ==========================================
+    // 2. 核心逻辑 (无需修改)
+    // ==========================================
+
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const statusDiv = document.getElementById('status');
+    const debugOverlay = document.getElementById('debug-overlay');
+    
+    let images = [];
+    let isDebug = false;
+
+    // 预加载图片
+    async function loadImages() {
+        let loadedCount = 0;
+        const total = config.scenes.length;
+        
+        config.scenes.forEach((scene, index) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous"; // 处理跨域问题
+            img.src = scene.src;
+            img.onload = () => {
+                images[index] = img;
+                loadedCount++;
+                if (loadedCount === total) {
+                    startBtn.innerText = "生成并录制视频";
+                    startBtn.disabled = false;
+                    statusDiv.innerText = "资源加载完毕，准备就绪。";
+                    // 绘制第一帧预览
+                    drawFrame(0); 
+                }
+            };
+            img.onerror = () => {
+                statusDiv.innerText = `图片加载失败: ${scene.src}`;
+                statusDiv.style.color = "red";
+            }
+        });
+    }
+
+    loadImages();
+
+    // 动画核心函数
+    function easeOutExpo(x) {
+        return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+    }
+
+    function drawFrame(currentTime) {
+        // 清空画布
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 计算当前场景
+        const sceneDuration = config.totalDuration / config.scenes.length; // 每个场景时长
+        let sceneIndex = Math.floor(currentTime / sceneDuration);
+        
+        // 防止最后时刻越界
+        if (sceneIndex >= config.scenes.length) sceneIndex = config.scenes.length - 1;
+
+        const scene = config.scenes[sceneIndex];
+        const img = images[sceneIndex];
+        
+        // 当前场景内的时间 (0 -> sceneDuration)
+        const localTime = currentTime % sceneDuration;
+        // 归一化进度 (0.0 -> 1.0)
+        const progress = localTime / sceneDuration;
+
+        if (img) {
+            // 1. 背景绘制 (肯·伯恩斯效应：缓慢放大)
+            const scale = 1 + (progress * 0.05); // 从 1.0 放大到 1.05
+            const scaledWidth = canvas.width * scale;
+            const scaledHeight = canvas.height * scale;
+            const offsetX = (canvas.width - scaledWidth) / 2;
+            const offsetY = (canvas.height - scaledHeight) / 2;
+            
+            ctx.save();
+            ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+            ctx.restore();
+
+            // 2. 绘制红圈动画
+            // 延迟0.5秒开始画圈，画圈动作持续0.8秒
+            const circleStart = 0.5;
+            const circleDuration = 0.8;
+            
+            if (localTime > circleStart) {
+                let circleProgress = (localTime - circleStart) / circleDuration;
+                if (circleProgress > 1) circleProgress = 1;
+                
+                circleProgress = easeOutExpo(circleProgress); // 缓动效果
+
+                const h = scene.highlight;
+                
+                ctx.save();
+                ctx.lineWidth = 8;
+                ctx.strokeStyle = '#ff3333'; // 醒目的红色
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                // 模拟手绘框的效果（这里简化为矩形路径动画）
+                // 计算周长
+                const perimeter = 2 * (h.w + h.h);
+                const currentLength = perimeter * circleProgress;
+
+                ctx.beginPath();
+                // 设置虚线模式：[实线长度, 间隙长度]。通过移动虚线偏移来实现生长效果
+                // 技巧：把虚线的一段设为超长，通过 dashOffset 控制显示部分
+                ctx.setLineDash([currentLength, perimeter]);
+                ctx.strokeRect(h.x, h.y, h.w, h.h);
+                
+                // 如果完全画完了，加一点发光效果增强冲击力
+                if (circleProgress === 1) {
+                    ctx.shadowColor = '#ff0000';
+                    ctx.shadowBlur = 20;
+                    ctx.strokeRect(h.x, h.y, h.w, h.h);
+                }
+                
+                ctx.restore();
+            }
+        }
+    }
+
+    // 录制与播放逻辑
+    async function startGeneration() {
+        startBtn.disabled = true;
+        startBtn.innerText = "生成中...";
+        
+        const stream = canvas.captureStream(60); // 60 FPS
+        const recorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm;codecs=vp9'
+        });
+        
+        const chunks = [];
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `AI工具猎手_快闪案例_${new Date().getTime()}.webm`;
+            a.click();
+            
+            startBtn.innerText = "生成并录制视频";
+            startBtn.disabled = false;
+            statusDiv.innerText = "生成完成！视频已自动下载。";
+        };
+
+        recorder.start();
+
+        const fps = 60;
+        const totalFrames = config.totalDuration * fps;
+        let frame = 0;
+
+        const interval = setInterval(() => {
+            const currentTime = frame / fps;
+            
+            if (currentTime >= config.totalDuration) {
+                clearInterval(interval);
+                recorder.stop();
+                return;
+            }
+
+            drawFrame(currentTime);
+            statusDiv.innerText = `渲染进度: ${Math.round((currentTime / config.totalDuration) * 100)}%`;
+            frame++;
+        }, 1000 / fps);
+    }
+
+    // ==========================================
+    // 3. 辅助功能：坐标拾取
+    // ==========================================
+    
+    function toggleDebug() {
+        isDebug = !isDebug;
+        debugOverlay.style.display = isDebug ? 'block' : 'none';
+        canvas.style.cursor = isDebug ? 'crosshair' : 'default';
+        
+        // 如果开启调试，绘制第一帧作为背景方便取点
+        if(isDebug) drawFrame(0.6); // 稍微取一点时间，为了不让画面全黑
+    }
+
+    // 鼠标移动监听，换算坐标
+    canvas.addEventListener('mousemove', (e) => {
+        if (!isDebug) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        const x = Math.round((e.clientX - rect.left) * scaleX);
+        const y = Math.round((e.clientY - rect.top) * scaleY);
+        
+        debugOverlay.innerText = `X: ${x}, Y: ${y}`;
+        // 跟随鼠标
+        debugOverlay.style.left = (e.clientX - rect.left + 15) + 'px';
+        debugOverlay.style.top = (e.clientY - rect.top + 15) + 'px';
+    });
+    
+    // 点击打印坐标到控制台，方便复制
+    canvas.addEventListener('click', (e) => {
+        if (!isDebug) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.round((e.clientX - rect.left) * (canvas.width / rect.width));
+        const y = Math.round((e.clientY - rect.top) * (canvas.height / rect.height));
+        console.log(`点击坐标: x: ${x}, y: ${y}`);
+        alert(`坐标已记录: x: ${x}, y: ${y}\n请记录下来去修改代码中的 config`);
+    });
+
+</script>
+</body>
+</html>
