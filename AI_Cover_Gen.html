@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI工具猎手 - 封面生成器</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .controls {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #1d4ed8;
+        }
+
+        .preview-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            max-height: 80vh;
+            border: 2px solid #333;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            /* Visual representation of 9:16 on screen */
+            aspect-ratio: 9 / 16; 
+        }
+
+        .note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎬 AI工具猎手 - 爆款封面生成器</h1>
+
+    <div class="container">
+        <!-- 控制面板 -->
+        <div class="controls">
+            <div class="control-group">
+                <label>1. 标题文字 (大字)</label>
+                <input type="text" id="titleText" value="中文生图神器" oninput="drawCanvas()">
+            </div>
+
+            <div class="control-group">
+                <label>2. 左侧：乱码图 (❌)</label>
+                <input type="file" id="imgLeftInput" accept="image/*" onchange="handleImageUpload(this, 'left')">
+                <div class="note">建议上传9:16图片，系统将自动居中裁剪</div>
+            </div>
+
+            <div class="control-group">
+                <label>3. 右侧：完美图 (✅)</label>
+                <input type="file" id="imgRightInput" accept="image/*" onchange="handleImageUpload(this, 'right')">
+                <div class="note">建议上传9:16图片，系统将自动居中裁剪</div>
+            </div>
+
+            <div class="control-group">
+                <label>调整字体位置 (Y轴)</label>
+                <input type="range" id="textPos" min="100" max="1800" value="960" style="width:100%" oninput="drawCanvas()">
+            </div>
+
+            <button onclick="downloadImage()">⬇️ 下载封面图</button>
+        </div>
+
+        <!-- 预览区域 -->
+        <div class="preview-area">
+            <!-- 画布尺寸设置为 1080x1920 (9:16 1080p) -->
+            <canvas id="coverCanvas" width="1080" height="1920"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('coverCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 存储加载的图片对象
+        let imgLeft = null;
+        let imgRight = null;
+
+        // 初始化
+        window.onload = function() {
+            drawCanvas();
+        };
+
+        // 处理图片上传
+        function handleImageUpload(input, side) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    if (side === 'left') {
+                        imgLeft = img;
+                    } else {
+                        imgRight = img;
+                    }
+                    drawCanvas();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 核心绘制逻辑
+        function drawCanvas() {
+            // 1. 清空画布 & 填充背景
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const w = canvas.width;
+            const h = canvas.height;
+            const mid = w / 2;
+
+            // 2. 绘制左图 (裁剪居中)
+            if (imgLeft) {
+                drawImageCentered(imgLeft, 0, 0, mid, h);
+            } else {
+                // 默认占位
+                ctx.fillStyle = '#333';
+                ctx.fillRect(0, 0, mid, h);
+                ctx.fillStyle = '#555';
+                ctx.font = '40px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText("上传左图", mid/2, h/2);
+            }
+
+            // 3. 绘制右图 (裁剪居中)
+            if (imgRight) {
+                drawImageCentered(imgRight, mid, 0, mid, h);
+            } else {
+                // 默认占位
+                ctx.fillStyle = '#444';
+                ctx.fillRect(mid, 0, mid, h);
+                ctx.fillStyle = '#666';
+                ctx.font = '40px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText("上传右图", mid + mid/2, h/2);
+            }
+
+            // 4. 绘制分割线
+            ctx.beginPath();
+            ctx.moveTo(mid, 0);
+            ctx.lineTo(mid, h);
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            // 5. 绘制半透明蒙层 (增强文字对比度)
+            // 只有当有图片时才加一点蒙层
+            if(imgLeft || imgRight) {
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(0, 0, w, h);
+            }
+
+            // 6. 绘制红叉 (左侧居中)
+            drawSymbol('cross', mid/2, h/2);
+
+            // 7. 绘制绿钩 (右侧居中)
+            drawSymbol('check', mid + mid/2, h/2);
+
+            // 8. 绘制大标题
+            const title = document.getElementById('titleText').value;
+            const textY = parseInt(document.getElementById('textPos').value);
+            
+            ctx.save();
+            ctx.translate(w/2, textY);
+            
+            // 文字设置
+            ctx.font = 'bold 130px "Microsoft YaHei", "SimHei", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // 阴影
+            ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetX = 5;
+            ctx.shadowOffsetY = 5;
+
+            // 描边
+            ctx.lineWidth = 25;
+            ctx.strokeStyle = '#cc0000'; // 红色描边，更有冲击力，或者黑色 #000
+            ctx.strokeText(title, 0, 0);
+            
+            // 填充
+            ctx.fillStyle = '#ffffff'; // 黄色 #FFEB3B 或者 白色 #FFF
+            ctx.fillText(title, 0, 0);
+            
+            ctx.restore();
+        }
+
+        // 辅助函数：居中裁剪绘制图片
+        function drawImageCentered(img, x, y, targetW, targetH) {
+            // 计算缩放比例，类似 object-fit: cover
+            const scale = Math.max(targetW / img.width, targetH / img.height);
+            const sw = targetW / scale;
+            const sh = targetH / scale;
+            const sx = (img.width - sw) / 2;
+            const sy = (img.height - sh) / 2;
+
+            ctx.drawImage(img, sx, sy, sw, sh, x, y, targetW, targetH);
+        }
+
+        // 辅助函数：绘制符号
+        function drawSymbol(type, x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = 10;
+
+            if (type === 'cross') {
+                // 画红叉
+                const size = 150;
+                ctx.beginPath();
+                ctx.strokeStyle = '#ff3333';
+                ctx.lineWidth = 40;
+                ctx.lineCap = 'round';
+                ctx.moveTo(-size/2, -size/2);
+                ctx.lineTo(size/2, size/2);
+                ctx.moveTo(size/2, -size/2);
+                ctx.lineTo(-size/2, size/2);
+                ctx.stroke();
+            } else if (type === 'check') {
+                // 画绿钩
+                const size = 150;
+                ctx.beginPath();
+                ctx.strokeStyle = '#00cc66';
+                ctx.lineWidth = 40;
+                ctx.lineCap = 'round';
+                ctx.moveTo(-size/1.5, 0);
+                ctx.lineTo(-size/4, size/2);
+                ctx.lineTo(size/1.2, -size/1.2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // 下载功能
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = 'longcat_cover.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html>
