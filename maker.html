@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>AI工具猎手 - 视频生成器</title>
+    <title>AI工具猎手 - 打字机视频生成</title>
     <style>
         body {
             background-color: #1a1a1a;
@@ -35,7 +35,6 @@
             overflow: hidden;
         }
 
-        /* 实际用于录制的Canvas，平时隐藏或缩小显示 */
         canvas {
             width: 100%;
             height: 100%;
@@ -79,18 +78,12 @@
             font-weight: bold;
             color: #ffcc00;
         }
-        
-        .hint {
-            font-size: 0.9em;
-            color: #aaa;
-            margin-top: 5px;
-        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>AI工具猎手 - 视频素材生成</h1>
+    <h1>AI工具猎手 - 打字机特效生成</h1>
     
     <div class="preview-area">
         <canvas id="videoCanvas" width="1920" height="1080"></canvas>
@@ -98,42 +91,39 @@
 
     <div class="controls">
         <div style="flex:1;">
-            <label for="customCode">背景代码素材 (在此处粘贴你的代码):</label>
+            <label for="customCode">背景代码素材:</label>
             <textarea id="customCode" placeholder="在此粘贴代码...">
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model_id = "ai-hunter/6b-model"
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-model = AutoModelForCausalLM.from_pretrained(
-    model_id, 
-    device_map="auto", 
-    torch_dtype=torch.float16
+# Loading 6B Model for Consumer GPU
+model_id = "ai-hunter/6b-optimized"
+print("Loading model parameters...")
+
+# Optimization: 4-bit quantization
+config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_compute_dtype=torch.float16
 )
 
-def generate_text(prompt):
-    inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
-    outputs = model.generate(**inputs, max_new_tokens=50)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+def run_inference(prompt):
+    """
+    Run efficient inference on consumer hardware
+    VRAM Required: ~6GB
+    """
+    inputs = tokenizer(prompt).to("cuda")
+    # Generating response...
+    output = model.generate(**inputs, max_tokens=100)
+    return decode(output)
 
-# Optimization for Consumer GPU
-# Quantization: 4-bit / 8-bit
-# VRAM Usage: < 6GB
-# Inference Speed: 30 tok/s
-
-class NeuralNet(nn.Module):
+class EfficiencyBooster:
     def __init__(self):
-        super(NeuralNet, self).__init__()
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(28*28, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 10)
-        )
+        self.efficiency = "10x"
+        self.target = "Everyone"
+        
+    def optimize_workflow(self):
+        return "Saving time for creative work."
             </textarea>
-            <p class="hint">提示：你可以随意替换上面的代码文本。</p>
         </div>
     </div>
 
@@ -148,101 +138,132 @@ class NeuralNet(nn.Module):
     const btn = document.getElementById('startBtn');
     const codeInput = document.getElementById('customCode');
 
-    // 配置参数
+    // === 配置参数 ===
     const DURATION = 8000; // 8秒
     const FPS = 30;
+    const FULL_TEXT = "仅6B参数，消费级显卡可跑";
+    const TYPE_SPEED = 150; // 打字速度 (毫秒/字)
+    const START_DELAY = 500; // 开始前的延迟 (毫秒)
     
     let animationId;
     let codeLines = [];
     let scrollY = 0;
     
-    // 初始化代码行
+    // 初始化代码内容
     function initCodeLines() {
-        const text = codeInput.value || "Console.log('Error');";
+        const text = codeInput.value || "console.log('Hello AI');";
         codeLines = text.split('\n');
-        // 为了循环滚动，复制几份
+        // 复制多份以确保循环滚动无缝隙
         while(codeLines.length < 100) {
             codeLines = codeLines.concat(codeLines);
         }
     }
 
-    // 绘制每一帧
-    function drawFrame(timestamp) {
-        // 1. 背景清空 (极客黑)
-        ctx.fillStyle = '#050505';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    /**
+     * 绘制每一帧
+     * @param {number} elapsed - 从录制开始经过的毫秒数
+     */
+    function drawFrame(elapsed) {
+        const width = canvas.width;
+        const height = canvas.height;
 
-        // 2. 绘制滚动的代码背景
+        // 1. 清空背景
+        ctx.fillStyle = '#050505';
+        ctx.fillRect(0, 0, width, height);
+
+        // 2. 绘制滚动代码 (极客风)
         ctx.font = '24px "Courier New", monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         
         const lineHeight = 30;
-        // 让代码向上滚动
-        scrollY -= 2; // 滚动速度
+        scrollY -= 3; // 滚动速度
         
-        // 如果滚过头了，重置
+        // 循环滚动逻辑
         if (Math.abs(scrollY) > (codeLines.length * lineHeight) / 2) {
             scrollY = 0;
         }
 
         codeLines.forEach((line, index) => {
             const y = scrollY + (index * lineHeight);
-            // 只绘制在屏幕内的
-            if (y > -50 && y < canvas.height + 50) {
-                // 计算透明度，制造上下边缘渐隐效果
-                const distFromCenter = Math.abs(y - canvas.height/2);
-                const opacity = Math.max(0.1, 1 - (distFromCenter / (canvas.height/1.5)));
+            if (y > -50 && y < height + 50) {
+                // 距离中心越远越透明
+                const distFromCenter = Math.abs(y - height/2);
+                const opacity = Math.max(0.1, 1 - (distFromCenter / (height/1.5)));
                 
-                ctx.fillStyle = `rgba(0, 255, 100, ${opacity * 0.4})`; // 只有0.4的最高透明度，作为背景
+                ctx.fillStyle = `rgba(0, 255, 100, ${opacity * 0.35})`; 
                 ctx.fillText(line, 40, y);
             }
         });
 
-        // 3. 绘制暗角/蒙版，让中间文字更清晰
+        // 3. 绘制暗角蒙版 (让背景变暗，突出前景)
         const gradient = ctx.createRadialGradient(
-            canvas.width/2, canvas.height/2, 100,
-            canvas.width/2, canvas.height/2, canvas.width/1.2
+            width/2, height/2, 100,
+            width/2, height/2, width/1.2
         );
-        gradient.addColorStop(0, "rgba(0,0,0,0.6)");
-        gradient.addColorStop(1, "rgba(0,0,0,0.9)");
+        gradient.addColorStop(0, "rgba(0,0,0,0.7)"); // 中心半透明
+        gradient.addColorStop(1, "rgba(0,0,0,0.95)"); // 边缘接近全黑
         ctx.fillStyle = gradient;
-        ctx.fillRect(0,0, canvas.width, canvas.height);
+        ctx.fillRect(0,0, width, height);
 
-        // 4. 绘制核心文字
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        // 4. 打字机效果核心逻辑
         
-        // 文字发光效果
-        ctx.shadowColor = "#00ffcc";
-        ctx.shadowBlur = 20;
-        
-        // 主标题
+        // 设定字体以计算宽度
         ctx.font = 'bold 90px "Microsoft YaHei", sans-serif';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText("仅6B参数，消费级显卡可跑", canvas.width/2, canvas.height/2);
-
-        // 装饰性光标
-        const showCursor = Math.floor(timestamp / 500) % 2 === 0; // 每500ms闪烁
-        if (showCursor) {
-           ctx.fillRect(canvas.width/2 + 580, canvas.height/2 - 40, 10, 80);
-        }
+        const fullTextWidth = ctx.measureText(FULL_TEXT).width;
         
-        // 重置阴影
+        // 计算起始X坐标 (确保最终文字整体居中)
+        // 文字虽然是逐个出来的，但起始位置应该是固定的
+        const startX = (width - fullTextWidth) / 2;
+        const centerY = height / 2;
+
+        // 计算当前应该显示多少个字
+        let charCount = 0;
+        if (elapsed > START_DELAY) {
+            charCount = Math.floor((elapsed - START_DELAY) / TYPE_SPEED);
+        }
+        if (charCount > FULL_TEXT.length) charCount = FULL_TEXT.length;
+        
+        const currentText = FULL_TEXT.substring(0, charCount);
+
+        // 绘制文字
+        ctx.textAlign = 'left'; // 打字机必须左对齐
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = "#00ffcc";
+        ctx.shadowBlur = 25; // 辉光效果
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(currentText, startX, centerY);
+
+        // 5. 绘制光标
+        // 光标位置 = 起始X + 当前文字宽度 + 间距
+        const currentTextWidth = ctx.measureText(currentText).width;
+        const cursorX = startX + currentTextWidth + 10;
+        
+        // 光标闪烁逻辑 (每500ms闪烁一次)
+        const showCursor = Math.floor(elapsed / 500) % 2 === 0;
+        
+        if (showCursor) {
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = '#00ff9d'; // 绿色极客光标
+            ctx.fillRect(cursorX, centerY - 45, 15, 90); // 宽15, 高90
+        }
+
+        // 恢复阴影设置以免影响下一帧背景
         ctx.shadowBlur = 0;
     }
 
     async function startRecording() {
+        if(btn.disabled) return;
         btn.disabled = true;
-        statusEl.textContent = "正在渲染并录制中，请勿关闭页面...";
+        statusEl.textContent = "正在渲染并录制中...";
         initCodeLines();
         scrollY = 0;
 
-        // 捕捉 Canvas 流
+        // 捕捉流
         const stream = canvas.captureStream(FPS);
         const mediaRecorder = new MediaRecorder(stream, {
             mimeType: 'video/webm; codecs=vp9',
-            videoBitsPerSecond: 5000000 // 5Mbps 高画质
+            videoBitsPerSecond: 8000000 // 8Mbps 提高码率保证清晰度
         });
 
         const chunks = [];
@@ -252,30 +273,31 @@ class NeuralNet(nn.Module):
             const blob = new Blob(chunks, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
             
-            // 自动下载
             const a = document.createElement('a');
             a.href = url;
-            a.download = `AI工具猎手_素材_${new Date().getTime()}.webm`;
+            a.download = `AI工具猎手_打字机特效_${new Date().getTime()}.webm`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            statusEl.textContent = "生成完成！视频已下载。";
+            statusEl.textContent = "生成完成！";
             btn.disabled = false;
-            cancelAnimationFrame(animationId);
         };
 
         mediaRecorder.start();
 
-        // 动画循环
+        // 动画循环逻辑
         let startTime = null;
+        
         function loop(timestamp) {
             if (!startTime) startTime = timestamp;
-            drawFrame(timestamp);
+            const elapsed = timestamp - startTime;
+
+            drawFrame(elapsed); // 传入经过的时间，用于计算打字进度
             
-            if (timestamp - startTime < DURATION) {
-                animationId = requestAnimationFrame(loop);
+            if (elapsed < DURATION) {
+                requestAnimationFrame(loop);
             } else {
                 mediaRecorder.stop();
             }
@@ -284,9 +306,16 @@ class NeuralNet(nn.Module):
         requestAnimationFrame(loop);
     }
     
-    // 初始渲染一帧用于预览
+    // 预览模式：不断循环动画（模拟已经播放完的状态）
     initCodeLines();
-    drawFrame(0);
+    function previewLoop(timestamp) {
+        if(!btn.disabled) {
+            // 预览时显示完整文字
+            drawFrame(DURATION + 1000); 
+            requestAnimationFrame(previewLoop);
+        }
+    }
+    requestAnimationFrame(previewLoop);
 
 </script>
 
