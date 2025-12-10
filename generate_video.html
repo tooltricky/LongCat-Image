@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI工具猎手 - 动态视频生成器</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+
+        .container {
+            position: relative;
+            box-shadow: 0 0 50px rgba(0, 123, 255, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+            border: 1px solid #333;
+        }
+
+        /* 预览画布尺寸 */
+        canvas {
+            display: block;
+            width: 800px;
+            height: 450px;
+        }
+
+        .controls {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .status {
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #aaa;
+            height: 24px; 
+        }
+
+        button {
+            padding: 14px 30px;
+            font-size: 18px;
+            background: linear-gradient(45deg, #007bff, #00d4ff);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.6);
+        }
+        
+        button:disabled {
+            background: #555;
+            transform: none;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>AI工具猎手 · 动态结尾生成</h1>
+    
+    <div class="container">
+        <!-- 真实分辨率 1920x1080 -->
+        <canvas id="videoCanvas" width="1920" height="1080"></canvas>
+    </div>
+    
+    <div class="controls">
+        <div class="status" id="statusText">预览画面运行中...</div>
+        <button id="startBtn" onclick="startRecording()">🎥 生成动态视频 (5秒)</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('videoCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('statusText');
+        const startBtn = document.getElementById('startBtn');
+
+        // 动画状态变量
+        let animationId;
+        let startTime = Date.now();
+
+        // 1. 核心动画循环
+        function animate() {
+            const now = Date.now();
+            const time = now - startTime; // 运行总时长(ms)
+            
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // --- A. 清空并绘制动态背景 ---
+            // 深色渐变底色
+            const gradient = ctx.createLinearGradient(0, 0, w, h);
+            gradient.addColorStop(0, '#1a1a1a');
+            gradient.addColorStop(1, '#050505');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, w, h);
+
+            // 动态网格线 (模拟数据流，向下滚动)
+            ctx.lineWidth = 2;
+            const gridOffset = (time * 0.05) % 100; // 滚动速度
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            // 横线
+            for (let y = gridOffset - 100; y < h; y += 100) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+            // 竖线 (静态)
+            for (let x = 0; x < w; x += 100) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+
+            // --- B. 绘制文字 (呼吸效果) ---
+            ctx.save();
+            
+            // 计算呼吸缩放比例 (正弦波)
+            const pulseScale = 1 + Math.sin(time * 0.005) * 0.03; // 在 0.97 - 1.03 之间浮动
+            
+            // 将原点移动到文字中心，缩放后再移回去
+            ctx.translate(w / 2, h / 2 - 50);
+            ctx.scale(pulseScale, pulseScale);
+            
+            // 主标题
+            ctx.shadowColor = "rgba(0, 123, 255, 0.8)";
+            ctx.shadowBlur = 30 + Math.sin(time * 0.01) * 10; // 阴影也在闪烁
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 200px "Microsoft YaHei", sans-serif';
+            ctx.fillText('关注领取', 0, 0); // 由于translate了，这里坐标是0,0
+            
+            ctx.restore();
+
+            // --- C. 副标题 (静态但高亮) ---
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ffd700';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = 'bold 60px "Microsoft YaHei", sans-serif';
+            ctx.fillText('👇 获取AI提效工具包 👇', w / 2, h / 2 + 120);
+
+            // --- D. 绘制动态箭头 (弹跳效果) ---
+            // 箭头指向右下角，我们让它沿着对角线方向来回移动
+            const bounce = Math.abs(Math.sin(time * 0.008)) * 30; // 0 到 30px 的位移
+            
+            const arrowBaseX = w / 2 + 350;
+            const arrowBaseY = h / 2 + 180;
+            const arrowTargetX = w - 150 + bounce; // X轴移动
+            const arrowTargetY = h - 100 + bounce; // Y轴移动
+
+            drawArrow(ctx, arrowBaseX, arrowBaseY, arrowTargetX, arrowTargetY);
+
+            // 继续下一帧
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // 绘制箭头的辅助函数
+        function drawArrow(ctx, fromX, fromY, toX, toY) {
+            const headlen = 50; 
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+
+            ctx.beginPath();
+            
+            // 绘制带弧度的箭杆
+            ctx.moveTo(fromX, fromY);
+            ctx.quadraticCurveTo(fromX + 50, toY, toX, toY);
+            
+            ctx.strokeStyle = '#ff4d4d';
+            ctx.lineWidth = 18;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // 绘制箭头头
+            ctx.beginPath();
+            ctx.fillStyle = '#ff4d4d';
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.fill();
+        }
+
+        // 启动预览动画
+        animate();
+
+        // 2. 录制逻辑
+        function startRecording() {
+            startBtn.disabled = true;
+            statusText.innerText = "⚡ 正在渲染并录制，请保持页面开启 (5秒)...";
+
+            // 捕获画布流 (60FPS，保证动画流畅)
+            const stream = canvas.captureStream(60); 
+            const recorder = new MediaRecorder(stream, {
+                mimeType: 'video/webm; codecs=vp9',
+                videoBitsPerSecond: 5000000 // 5Mbps 高码率
+            });
+
+            const chunks = [];
+            
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'AI工具猎手_动态结尾.webm';
+                document.body.appendChild(a);
+                a.click();
+                
+                window.URL.revokeObjectURL(url);
+                statusText.innerText = "✅ 视频已生成！";
+                startBtn.disabled = false;
+                startBtn.innerText = "🎥 再次生成";
+            };
+
+            recorder.start();
+
+            // 5秒后停止
+            setTimeout(() => {
+                recorder.stop();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
