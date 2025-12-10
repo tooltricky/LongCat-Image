@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI工具猎手 - 视频素材生成器</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        input[type="text"], input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            grid-column: span 2;
+            background-color: #e74c3c; /* 红色系，符合打叉的感觉 */
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #c0392b;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .preview-area {
+            text-align: center;
+        }
+
+        canvas {
+            max-width: 100%;
+            border: 1px solid #000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            background-color: #fff;
+        }
+
+        .status {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #e67e22;
+            height: 24px;
+        }
+
+        .tips {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 10px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>AI工具猎手 - 素材生成器</h1>
+    
+    <div class="container">
+        <div class="controls">
+            <div class="control-group">
+                <label for="imageUpload">1. 上传左侧图片 (MJ/SD生成的乱码图)</label>
+                <input type="file" id="imageUpload" accept="image/*">
+            </div>
+            <div class="control-group">
+                <label for="rightText">2. 右侧显示的文字 (将被打叉)</label>
+                <input type="text" id="rightText" value="Midjourney V5 生成效果" placeholder="输入文字...">
+            </div>
+            <button id="generateBtn" disabled>开始生成视频 (4秒)</button>
+        </div>
+
+        <div class="preview-area">
+            <div class="status" id="statusText">准备就绪</div>
+            <!-- 画布尺寸设为 1280x720 (720p 16:9) -->
+            <canvas id="videoCanvas" width="1280" height="720"></canvas>
+        </div>
+        
+        <div class="tips">
+            <p>* 提示：点击生成后请勿切换标签页，等待自动下载 webm 格式视频。</p>
+            <p>* 兼容性：请使用 Chrome 或 Edge 浏览器以获得最佳效果。</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('videoCanvas');
+        const ctx = canvas.getContext('2d');
+        const imageUpload = document.getElementById('imageUpload');
+        const rightTextInput = document.getElementById('rightText');
+        const generateBtn = document.getElementById('generateBtn');
+        const statusText = document.getElementById('statusText');
+
+        let userImage = new Image();
+        let isImageLoaded = false;
+
+        // 初始化画布背景
+        function drawScene(showCross = false, crossScale = 1) {
+            // 清空
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 1. 绘制左侧图片 (0 - 640px)
+            if (isImageLoaded) {
+                // 保持比例填满左半边，或者拉伸填满，这里选择 "Cover" 模式裁剪填充
+                const leftWidth = canvas.width / 2;
+                const leftHeight = canvas.height;
+                
+                // 简单的拉伸填充 (如果需要裁剪可以写更复杂的逻辑，这里为了简单直接拉伸)
+                // 建议用户上传竖图或正方形图
+                // 为了更好的效果，我们做 "Aspect Fill"
+                const scale = Math.max(leftWidth / userImage.width, leftHeight / userImage.height);
+                const x = (leftWidth - userImage.width * scale) / 2;
+                const y = (leftHeight - userImage.height * scale) / 2;
+                
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, 0, leftWidth, leftHeight);
+                ctx.clip();
+                ctx.drawImage(userImage, x, y, userImage.width * scale, userImage.height * scale);
+                ctx.restore();
+            } else {
+                // 占位符
+                ctx.fillStyle = '#ddd';
+                ctx.fillRect(0, 0, canvas.width / 2, canvas.height);
+                ctx.fillStyle = '#666';
+                ctx.font = '30px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('请上传图片', canvas.width / 4, canvas.height / 2);
+            }
+
+            // 2. 绘制右侧文字 (640px - 1280px)
+            const rightCenterX = canvas.width * 0.75; // 3/4 位置
+            const rightCenterY = canvas.height / 2;
+
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 50px "Microsoft YaHei", sans-serif'; // 只有文字
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // 简单的自动换行处理 (如果文字太长)
+            const text = rightTextInput.value;
+            const maxWidth = 500;
+            wrapText(ctx, text, rightCenterX, rightCenterY, maxWidth, 60);
+
+            // 3. 绘制红叉 (如果触发)
+            if (showCross) {
+                const crossSize = 200 * crossScale;
+                const halfSize = crossSize / 2;
+                
+                ctx.save();
+                ctx.translate(rightCenterX, rightCenterY);
+                
+                ctx.strokeStyle = '#e74c3c'; // 红色
+                ctx.lineWidth = 20;
+                ctx.lineCap = 'round';
+
+                ctx.beginPath();
+                // 第一笔 \
+                ctx.moveTo(-halfSize, -halfSize);
+                ctx.lineTo(halfSize, halfSize);
+                // 第二笔 /
+                ctx.moveTo(halfSize, -halfSize);
+                ctx.lineTo(-halfSize, halfSize);
+                
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        // 文字换行辅助函数
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split('');
+            let line = '';
+            let lines = [];
+            
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n];
+                let metrics = context.measureText(testLine);
+                let testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    lines.push(line);
+                    line = words[n];
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+            
+            // 垂直居中块
+            let totalHeight = lines.length * lineHeight;
+            let startY = y - (totalHeight / 2) + (lineHeight / 2);
+
+            for (let i = 0; i < lines.length; i++) {
+                context.fillText(lines[i], x, startY + (i * lineHeight));
+            }
+        }
+
+        // 监听图片上传
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    userImage.src = event.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        userImage.onload = function() {
+            isImageLoaded = true;
+            generateBtn.disabled = false;
+            drawScene(false); // 预览
+        };
+
+        rightTextInput.addEventListener('input', function() {
+            drawScene(false);
+        });
+
+        // 生成视频逻辑
+        generateBtn.addEventListener('click', async () => {
+            generateBtn.disabled = true;
+            statusText.innerText = "生成中... 请勿关闭";
+            
+            const stream = canvas.captureStream(30); // 30 FPS
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const dest = audioCtx.createMediaStreamDestination();
+            
+            // 将音频轨道合并到视频流
+            const combinedStream = new MediaStream([
+                ...stream.getVideoTracks(),
+                ...dest.stream.getAudioTracks()
+            ]);
+
+            const recorder = new MediaRecorder(combinedStream, {
+                mimeType: 'video/webm; codecs=vp9'
+            });
+
+            const chunks = [];
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `AI猎手_素材_${Date.now()}.webm`;
+                a.click();
+                
+                statusText.innerText = "生成完成！";
+                generateBtn.disabled = false;
+                audioCtx.close();
+            };
+
+            recorder.start();
+
+            // 动画循环参数
+            const fps = 30;
+            const duration = 4; // 秒
+            const totalFrames = fps * duration;
+            let frame = 0;
+
+            const animationInterval = setInterval(() => {
+                frame++;
+                const currentTime = frame / fps;
+
+                let showCross = false;
+                let crossScale = 1;
+
+                // 逻辑：1秒时出现叉，并播放声音
+                if (currentTime >= 1) {
+                    showCross = true;
+                    // 简单的弹跳动画效果
+                    if (currentTime < 1.2) {
+                        crossScale = (currentTime - 1) * 5; // 0 -> 1
+                        if (crossScale > 1) crossScale = 1.2; // 稍微放大一点
+                    } else if (currentTime < 1.3) {
+                        crossScale = 1; // 回弹
+                    }
+                }
+
+                // 在第30帧 (1秒) 触发音效
+                if (frame === 30) {
+                    playWrongSound(audioCtx, dest);
+                }
+
+                drawScene(showCross, crossScale);
+
+                if (frame >= totalFrames) {
+                    clearInterval(animationInterval);
+                    recorder.stop();
+                }
+            }, 1000 / fps);
+        });
+
+        // 合成音效：错号声 (Buzzer)
+        function playWrongSound(audioCtx, dest) {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.type = 'sawtooth'; // 锯齿波，听起来比较刺耳，像蜂鸣器
+            
+            // 频率滑降效果 (从 150Hz 降到 100Hz)
+            oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+
+            // 音量包络
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(dest); // 连接到录制流
+            gainNode.connect(audioCtx.destination); // 同时也连接到扬声器让你听到
+
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.4);
+        }
+
+        // 初始绘制
+        drawScene();
+
+    </script>
+</body>
+</html>
