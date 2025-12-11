@@ -68,6 +68,17 @@ def main():
     st.title("🐱 LongCat-Image 网页界面")
     st.markdown("### 中英双语文生图与图像编辑")
 
+    # 在顶部添加一个友好的推广链接
+    st.markdown(
+        """
+        <div style='text-align: center; padding: 10px; margin-bottom: 20px; background-color: rgba(255, 215, 0, 0.1); border-radius: 8px; border: 1px solid rgba(255, 215, 0, 0.3);'>
+            <span style='color: #666; font-size: 14px;'>💡 交流群： </span>
+            <a href='https://tooltricky.com' target='_blank' style='color: #FF6B6B; text-decoration: none; font-weight: bold;'>ToolTricky.com</a>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     st.sidebar.header("模型配置")
 
     t2i_checkpoint = st.sidebar.text_input(
